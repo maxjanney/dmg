@@ -1,3 +1,6 @@
+const WRAM: usize = 0x2000;
+const HRAM: usize = 0x7f;
+
 #[derive(PartialEq, Eq)]
 enum Mbc {
     Mbc1,
@@ -22,8 +25,11 @@ impl BankMode {
 }
 
 pub struct Memory {
+    ie: u8,
     rom: Vec<u8>,
     ram: Vec<u8>,
+    wram: Box<[u8; WRAM]>,
+    hram: Box<[u8; HRAM]>,
     rom_bank: u16,
     ram_bank: u8,
     ram_enabled: bool,
@@ -68,7 +74,41 @@ impl Memory {
         self.wb(0xffff, 0x00); // IE
     }
 
-    // Write a byte at the specified address
+    // Read a byte
+    pub fn rb(&self, addr: u16) -> u8 {
+        match addr {
+            // 0000-3FFF - ROM Bank 00 (Read Only)
+            0x0000..=0x3fff => self.rom[addr as usize],
+            // 4000-7FFF - ROM Bank 01-7F (Read Only)
+            0x4000..=0x7fff => {
+                let offset = (self.rom_bank as u32) * 0x4000;
+                self.rom[((addr as u32) - 0x4000 + offset) as usize]
+            }
+            // A000-BFFF - RAM Bank 00-03, if any (Read/Write)
+            0xa000..=0xbfff => {
+                if !self.ram_enabled {
+                    0xff
+                } else {
+                    // TODO: Rtc
+                    let offset = (self.ram_bank as u16) * 0x2000;
+                    self.ram[((addr - 0xa000) + offset) as usize]
+                }
+            }
+            // 4KB Work RAM Bank 0 (WRAM)
+            // E000 - EFFF mirrors C000 - CFFF
+            0xc000..=0xcfff | 0xe000..=0xefff => self.wram[(addr & 0xfff) as usize],
+            // 4KB Work RAM Bank 1 (WRAM)
+            // F000 - FDFF mirrors D000 - DFFF
+            0xd000..=0xdfff | 0xf000..=0xfdff => self.wram[((addr & 0xfff) + 0x1000) as usize],
+            // FF80 - FFFE HRAM
+            0xff80..=0xfffe => self.hram[(addr - 0xff80) as usize],
+            // FFFF Interrupt enable register
+            0xffff => self.ie,
+            _ => 0xff,
+        }
+    }
+
+    // Write a byte
     pub fn wb(&mut self, addr: u16, val: u8) {
         match addr {
             // 0000-1FFF - RAM and Timer Enable (Write Only)
@@ -104,7 +144,7 @@ impl Memory {
                             // 2000 - 2FFF (ROM Bank Low)
                             self.rom_bank = (self.rom_bank & 0xff00) | val;
                         } else {
-                            // $3000 - $3FFF (ROM Bank High)
+                            // 3000 - 3FFF (ROM Bank High)
                             let val = val & 1;
                             self.rom_bank = (self.rom_bank & 0x00ff) | (val << 8);
                         }
@@ -124,7 +164,7 @@ impl Memory {
                 },
                 Mbc::Mbc3 => {
                     self.ram_bank = val & 0x3;
-                    todo!("Rtc mapping");
+                    // TODO: Rtc
                 }
                 Mbc::Mbc5 => {
                     self.ram_bank = val & 0xf;
@@ -140,7 +180,7 @@ impl Memory {
             // A000-BFFF - RAM Bank 00-03, if any (Read/Write)
             0xa000..=0xbfff => {
                 if self.ram_enabled {
-                    // todo!("check if rtc is currently mapped to this region for MBC2");
+                    // TODO: Rtc
                     let val = if self.mbc == Mbc::Mbc2 {
                         val & 0xf
                     } else {
@@ -150,6 +190,18 @@ impl Memory {
                     self.ram[((addr - 0xa000) + offset) as usize] = val;
                 }
             }
+            // 4KB Work RAM Bank 0 (WRAM)
+            // E000 - EFFF mirrors C000 - CFFF
+            0xc000..=0xcfff | 0xe000..=0xefff => self.wram[(addr & 0xfff) as usize] = val,
+            // 4KB Work RAM Bank 1 (WRAM)
+            // F000 - FDFF mirrors D000 - DFFF
+            0xd000..=0xdfff | 0xf000..=0xfdff => {
+                self.wram[((addr & 0xfff) + 0x1000) as usize] = val;
+            }
+            // FF80 - FFFE HRAM
+            0xff80..=0xfffe => self.hram[(addr - 0xff80) as usize] = val,
+            // FFFF Interrupt enable register
+            0xffff => self.ie = val,
             _ => {}
         }
     }
