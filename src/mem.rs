@@ -124,6 +124,19 @@ impl Memory {
                 0xf => self.if_,
                 _ => 0xff,
             },
+            0x1 => match addr & 0xf {
+                0x0 => 0, // NR10
+                0x1 => 0, // NR11
+                0x2 => 0, // NR12
+                0x3 => 0, // NR13
+                0x4 => 0, // NR14
+                _ => 0xff,
+            },
+            // PPU registers
+            0x4 => {
+                // TODO: self.ppu.rb(addr)
+                0
+            }
             _ => 0xff,
         }
     }
@@ -238,6 +251,15 @@ impl Memory {
                 0x6 => {} // TODO: TMA
                 0x7 => {} // TODO: TAC
                 0xf => self.if_ = val,
+                _ => {}
+            },
+            // Sound channels
+            0x1 => match addr & 0xf {
+                0x0 => {} // NR10
+                0x1 => {} // NR11
+                0x2 => {} // NR12
+                0x3 => {} // NR13
+                0x4 => {} // NR14
                 _ => {}
             },
             _ => {}
