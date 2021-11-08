@@ -25,7 +25,8 @@ impl BankMode {
 }
 
 pub struct Memory {
-    ie: u8,
+    if_: u8,
+    ie_: u8,
     rom: Vec<u8>,
     ram: Vec<u8>,
     wram: Box<[u8; WRAM]>,
@@ -100,10 +101,29 @@ impl Memory {
             // 4KB Work RAM Bank 1 (WRAM)
             // F000 - FDFF mirrors D000 - DFFF
             0xd000..=0xdfff | 0xf000..=0xfdff => self.wram[((addr & 0xfff) + 0x1000) as usize],
+            // FF00-FF7F I/O Ports
+            0xff00..=0xff7f => self.io_rb(addr),
             // FF80 - FFFE HRAM
             0xff80..=0xfffe => self.hram[(addr - 0xff80) as usize],
             // FFFF Interrupt enable register
-            0xffff => self.ie,
+            0xffff => self.ie_,
+            _ => 0xff,
+        }
+    }
+
+    // Read byte from I/O ports
+    fn io_rb(&self, addr: u16) -> u8 {
+        match (addr >> 4) & 0xf {
+            // Joypad, timer, interrupt flag
+            0x0 => match addr & 0xf {
+                0x0 => 0, // TODO: joypad input
+                0x4 => 0, // TODO: DIV
+                0x5 => 0, // TODO: TIMA
+                0x6 => 0, // TODO: TMA
+                0x7 => 0, // TODO: TAC
+                0xf => self.if_,
+                _ => 0xff,
+            },
             _ => 0xff,
         }
     }
@@ -198,10 +218,28 @@ impl Memory {
             0xd000..=0xdfff | 0xf000..=0xfdff => {
                 self.wram[((addr & 0xfff) + 0x1000) as usize] = val;
             }
+            // FF00-FF7F I/O Ports
+            0xff00..=0xff7f => self.io_wb(addr, val),
             // FF80 - FFFE HRAM
             0xff80..=0xfffe => self.hram[(addr - 0xff80) as usize] = val,
             // FFFF Interrupt enable register
-            0xffff => self.ie = val,
+            0xffff => self.ie_ = val,
+            _ => {}
+        }
+    }
+
+    fn io_wb(&mut self, addr: u16, val: u8) {
+        match (addr >> 4) & 0xf {
+            // Joypad, timer, interrupt flag
+            0x0 => match addr & 0xf {
+                0x0 => {} // TODO: joypad input
+                0x4 => {} // TODO: DIV
+                0x5 => {} // TODO: TIMA
+                0x6 => {} // TODO: TMA
+                0x7 => {} // TODO: TAC
+                0xf => self.if_ = val,
+                _ => {}
+            },
             _ => {}
         }
     }
