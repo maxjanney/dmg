@@ -1,3 +1,11 @@
+use std::fmt;
+
+pub const Z: u8 = 1 << 7;
+pub const N: u8 = 1 << 6;
+pub const H: u8 = 1 << 5;
+pub const C: u8 = 1 << 4;
+
+#[derive(Debug)]
 pub struct Registers {
     a: u8,
     b: u8,
@@ -11,26 +19,20 @@ pub struct Registers {
     pc: u16,
 }
 
-impl Default for Registers {
-    fn default() -> Self {
+impl Registers {
+    pub fn new() -> Self {
         Self {
             a: 0x01,
             b: 0x00,
             c: 0x13,
             d: 0x00,
             e: 0xd8,
-            f: 0xb0,
+            f: 0,
             h: 0x01,
             l: 0x4d,
-            sp: 0xffff,
+            sp: 0xfffe,
             pc: 0x0100,
         }
-    }
-}
-
-impl Registers {
-    pub fn new() -> Self {
-        Self::default()
     }
 
     #[inline]
@@ -57,5 +59,15 @@ impl Registers {
         let pc = self.pc;
         self.pc += 1;
         pc
+    }
+}
+
+impl fmt::Display for Registers {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "a: {:02x}, b: {:02x}, c: {:02x}, d: {:02x}, e: {:02x}, f: {:02x}, h: {:02x}, l: {:02x} sp: {:04x}, pc: {:04x}",
+            self.a, self.b, self.c, self.d, self.e, self.f, self.h, self.l, self.sp, self.pc,
+        )
     }
 }

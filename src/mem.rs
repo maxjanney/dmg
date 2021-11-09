@@ -7,6 +7,7 @@ enum Mbc {
     Mbc2,
     Mbc3,
     Mbc5,
+    Unknown,
 }
 
 enum BankMode {
@@ -39,9 +40,27 @@ pub struct Memory {
 }
 
 impl Memory {
-    // state of the gb after the boot rom
+    pub fn new() -> Self {
+        Self {
+            if_: 0,
+            ie_: 0,
+            rom: Vec::new(),
+            ram: Vec::new(),
+            wram: Box::new([0u8; WRAM]),
+            hram: Box::new([0u8; HRAM]),
+            rom_bank: 1,
+            ram_bank: 0,
+            ram_enabled: false,
+            mode: BankMode::Rom,
+            mbc: Mbc::Unknown,
+        }
+    }
+
+    pub fn load_rom(&mut self, rom: Vec<u8>) {}
+
+    // state of the gb after the boot rom finishes
     // see https://bgb.bircd.org/pandocs.htm#powerupsequence
-    fn power_up(&mut self) {
+    pub fn power_up(&mut self) {
         self.wb(0xff05, 0x00); // TIMA
         self.wb(0xff06, 0x00); // TMA
         self.wb(0xff07, 0x00); // TAC
@@ -111,34 +130,9 @@ impl Memory {
         }
     }
 
-    // Read byte from I/O ports
+    // Read byte from I/O register
     fn io_rb(&self, addr: u16) -> u8 {
-        match (addr >> 4) & 0xf {
-            // Joypad, timer, interrupt flag
-            0x0 => match addr & 0xf {
-                0x0 => 0, // TODO: joypad input
-                0x4 => 0, // TODO: DIV
-                0x5 => 0, // TODO: TIMA
-                0x6 => 0, // TODO: TMA
-                0x7 => 0, // TODO: TAC
-                0xf => self.if_,
-                _ => 0xff,
-            },
-            0x1 => match addr & 0xf {
-                0x0 => 0, // NR10
-                0x1 => 0, // NR11
-                0x2 => 0, // NR12
-                0x3 => 0, // NR13
-                0x4 => 0, // NR14
-                _ => 0xff,
-            },
-            // PPU registers
-            0x4 => {
-                // TODO: self.ppu.rb(addr)
-                0
-            }
-            _ => 0xff,
-        }
+        0
     }
 
     // Write a byte
@@ -152,6 +146,7 @@ impl Memory {
                         self.ram_enabled = !self.ram_enabled;
                     }
                 }
+                _ => {}
             },
             // 2000-3FFF - ROM Bank Number (Write Only)
             0x2000..=0x3fff => {
@@ -182,6 +177,7 @@ impl Memory {
                             self.rom_bank = (self.rom_bank & 0x00ff) | (val << 8);
                         }
                     }
+                    _ => {}
                 }
             }
             // 4000-5FFF - RAM Bank Number - or - Upper Bits of ROM Bank Number
@@ -241,28 +237,6 @@ impl Memory {
         }
     }
 
-    fn io_wb(&mut self, addr: u16, val: u8) {
-        match (addr >> 4) & 0xf {
-            // Joypad, timer, interrupt flag
-            0x0 => match addr & 0xf {
-                0x0 => {} // TODO: joypad input
-                0x4 => {} // TODO: DIV
-                0x5 => {} // TODO: TIMA
-                0x6 => {} // TODO: TMA
-                0x7 => {} // TODO: TAC
-                0xf => self.if_ = val,
-                _ => {}
-            },
-            // Sound channels
-            0x1 => match addr & 0xf {
-                0x0 => {} // NR10
-                0x1 => {} // NR11
-                0x2 => {} // NR12
-                0x3 => {} // NR13
-                0x4 => {} // NR14
-                _ => {}
-            },
-            _ => {}
-        }
-    }
+    // Write byte to I/O register
+    fn io_wb(&mut self, addr: u16, val: u8) {}
 }
