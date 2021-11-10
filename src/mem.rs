@@ -130,6 +130,11 @@ impl Memory {
         }
     }
 
+    // Read a word
+    pub fn rw(&self, addr: u16) -> u16 {
+        (self.rb(addr) as u16) | ((self.rb(addr + 1) as u16) << 8)
+    }
+
     // Read byte from I/O register
     fn io_rb(&self, addr: u16) -> u8 {
         0

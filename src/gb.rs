@@ -1,5 +1,9 @@
-use super::cpu::Cpu;
-use super::mem::Memory;
+use core::time;
+
+use crate::{cpu::Cpu, mem::Memory};
+
+// The gameboy runs 70224 clock cycles a frame
+const FRAME_CYCLES: u32 = 70224;
 
 pub struct Gameboy {
     cpu: Cpu,
@@ -15,4 +19,6 @@ impl Gameboy {
         gb.mem.power_up();
         gb
     }
+
+    pub fn frame(&mut self) {}
 }

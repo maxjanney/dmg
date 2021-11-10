@@ -1,3 +1,4 @@
+pub mod isa;
 pub mod reg;
 
 use super::mem;
@@ -14,5 +15,7 @@ impl Cpu {
         }
     }
 
-    pub fn exec(&mut self, mem: &mut mem::Memory) {}
+    pub fn step(&mut self, mem: &mut mem::Memory) -> u32 {
+        0
+    }
 }

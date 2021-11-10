@@ -7,21 +7,27 @@ pub const C: u8 = 1 << 4;
 
 #[derive(Debug)]
 pub struct Registers {
-    a: u8,
-    b: u8,
-    c: u8,
-    d: u8,
-    e: u8,
-    f: u8,
-    h: u8,
-    l: u8,
+    pub halted: bool,
+    pub stopped: bool,
+    pub ime: bool,
+    pub a: u8,
+    pub b: u8,
+    pub c: u8,
+    pub d: u8,
+    pub e: u8,
+    pub f: u8,
+    pub h: u8,
+    pub l: u8,
+    pub pc: u16,
     sp: u16,
-    pc: u16,
 }
 
 impl Registers {
     pub fn new() -> Self {
         Self {
+            halted: false,
+            stopped: false,
+            ime: false,
             a: 0x01,
             b: 0x00,
             c: 0x13,
@@ -55,7 +61,7 @@ impl Registers {
         ((self.h as u16) << 8) | (self.l as u16)
     }
 
-    pub fn inc_pc(&mut self) -> u16 {
+    pub fn bump(&mut self) -> u16 {
         let pc = self.pc;
         self.pc += 1;
         pc
