@@ -66,6 +66,13 @@ impl Registers {
         self.pc += 1;
         pc
     }
+
+    pub fn dec_hl(&mut self) {
+        self.l = self.l.wrapping_sub(1);
+        if self.l == 0xff {
+            self.h -= 1;
+        }
+    }
 }
 
 impl fmt::Display for Registers {
