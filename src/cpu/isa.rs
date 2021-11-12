@@ -33,39 +33,53 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
 
     match ins {
         0x00 => 4, // NOP
-
         0x02 => {
             // LD (BC), A
             mem.wb(regs.bc(), regs.a);
             8
         }
+        0x06 => ld_n!(b), // LD B, n
+        0x0a => {
+            regs.a = mem.rb(regs.bc());
+            8
+        }
+        0x0e => ld_n!(c), // LD C, n
         0x12 => {
             // LD (DE), A
             mem.wb(regs.de(), regs.a);
             8
         }
-
-        0x06 => ld_n!(b), // LD B, n
-        0x0e => ld_n!(c), // LD C, n
         0x16 => ld_n!(d), // LD D, n
+        0x1a => {
+            // LD A,(DE)
+            regs.a = mem.rb(regs.de());
+            8
+        }
         0x1e => ld_n!(e), // LD E, n
         0x26 => ld_n!(h), // LD H ,n
+        0x2a => {
+            regs.a = mem.rb(regs.hl());
+            regs.inc_hl();
+            8
+        }
         0x2e => ld_n!(l), // LD L, n
-
-        0x7f => ld_rr!(a, a), // LD A, A
-        0x78 => ld_rr!(a, b), // LD A, B
-        0x79 => ld_rr!(a, c), // LD A, C
-        0x7a => ld_rr!(a, d), // LD A, D
-        0x7b => ld_rr!(a, e), // LD A, E
-        0x7c => ld_rr!(a, h), // LD A, H
-        0x7d => ld_rr!(a, l), // LD A, L
-        0x7e => ld_r_hl!(a),  // LD A, (HL)
+        0x32 => {
+            mem.wb(regs.hl(), regs.a);
+            regs.dec_hl();
+            8
+        }
+        0x36 => {
+            // LD (HL), n
+            mem.wb(regs.hl(), mem.rb(regs.bump()));
+            12
+        }
         0x3a => {
             // LDD A, (HL-)
             regs.a = mem.rb(regs.hl());
             regs.dec_hl();
             8
         }
+        0x3e => ld_n!(a),     // LD A, n
         0x40 => ld_rr!(b, b), // LD B, B
         0x41 => ld_rr!(b, c), // LD B, C
         0x42 => ld_rr!(b, d), // LD B, D
@@ -121,28 +135,14 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
         0x74 => ld_hl_r!(h),  // LD (HL), H
         0x75 => ld_hl_r!(l),  // LD (HL), L
         0x77 => ld_hl_r!(a),  // LD (HL), A
-        0x36 => {
-            // LD (HL), n
-            mem.wb(regs.hl(), mem.rb(regs.bump()));
-            12
-        }
-
-        0x0a => {
-            // LD A, (BC)
-            regs.a = mem.rb(regs.bc());
-            8
-        }
-        0x1a => {
-            // LD A,(DE)
-            regs.a = mem.rb(regs.de());
-            8
-        }
-        0xfa => {
-            // LD A, (nn)
-            regs.a = mem.rb(mem.rw(regs.pc));
-            regs.pc += 2;
-            16
-        }
+        0x78 => ld_rr!(a, b), // LD A, B
+        0x79 => ld_rr!(a, c), // LD A, C
+        0x7a => ld_rr!(a, d), // LD A, D
+        0x7b => ld_rr!(a, e), // LD A, E
+        0x7c => ld_rr!(a, h), // LD A, H
+        0x7d => ld_rr!(a, l), // LD A, L
+        0x7e => ld_r_hl!(a),  // LD A, (HL)
+        0x7f => ld_rr!(a, a), // LD A, A
         0xe2 => {
             mem.wb(0xff00 | (regs.c as u16), regs.a);
             8
@@ -157,6 +157,12 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
             // LD A, (C)
             regs.a = mem.rb(0xff00 | (regs.c as u16));
             8
+        }
+        0xfa => {
+            // LD A, (nn)
+            regs.a = mem.rb(mem.rw(regs.pc));
+            regs.pc += 2;
+            16
         }
         _ => 0,
     }

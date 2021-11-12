@@ -67,6 +67,13 @@ impl Registers {
         pc
     }
 
+    pub fn inc_hl(&mut self) {
+        self.l = self.l.wrapping_add(1);
+        if self.l == 0 {
+            self.h += 1;
+        }
+    }
+
     pub fn dec_hl(&mut self) {
         self.l = self.l.wrapping_sub(1);
         if self.l == 0xff {
