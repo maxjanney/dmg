@@ -40,6 +40,7 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
         }
         0x06 => ld_n!(b), // LD B, n
         0x0a => {
+            // LD A, (BC)
             regs.a = mem.rb(regs.bc());
             8
         }
@@ -56,14 +57,22 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
             8
         }
         0x1e => ld_n!(e), // LD E, n
+        0x22 => {
+            // LD (HL+), A
+            mem.wb(regs.hl(), regs.a);
+            regs.inc_hl();
+            8
+        }
         0x26 => ld_n!(h), // LD H ,n
         0x2a => {
+            // LD A, (HL+)
             regs.a = mem.rb(regs.hl());
             regs.inc_hl();
             8
         }
         0x2e => ld_n!(l), // LD L, n
         0x32 => {
+            // LD (HL-), A
             mem.wb(regs.hl(), regs.a);
             regs.dec_hl();
             8
@@ -144,6 +153,7 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
         0x7e => ld_r_hl!(a),  // LD A, (HL)
         0x7f => ld_rr!(a, a), // LD A, A
         0xe2 => {
+            // LD (FF00+C), A
             mem.wb(0xff00 | (regs.c as u16), regs.a);
             8
         }
