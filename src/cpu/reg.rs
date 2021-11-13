@@ -1,9 +1,12 @@
 use std::fmt;
 
-pub const Z: u8 = 1 << 7;
-pub const N: u8 = 1 << 6;
-pub const H: u8 = 1 << 5;
-pub const C: u8 = 1 << 4;
+#[derive(Clone, Copy)]
+pub enum Flag {
+    Z = 1 << 7,
+    N = 1 << 6,
+    H = 1 << 5,
+    C = 1 << 4,
+}
 
 #[derive(Debug)]
 pub struct Registers {
@@ -42,11 +45,6 @@ impl Registers {
     }
 
     #[inline]
-    pub fn af(&self) -> u16 {
-        ((self.a as u16) << 8) | (self.f as u16)
-    }
-
-    #[inline]
     pub fn bc(&self) -> u16 {
         ((self.b as u16) << 8) | (self.c as u16)
     }
@@ -80,14 +78,18 @@ impl Registers {
             self.h -= 1;
         }
     }
-}
 
-impl fmt::Display for Registers {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "a: {:02x}, b: {:02x}, c: {:02x}, d: {:02x}, e: {:02x}, f: {:02x}, h: {:02x}, l: {:02x} sp: {:04x}, pc: {:04x}",
-            self.a, self.b, self.c, self.d, self.e, self.f, self.h, self.l, self.sp, self.pc,
-        )
+    #[inline]
+    pub fn get_flag(&self, f: Flag) -> u8 {
+        ((self.f & f as u8) != 0) as u8
+    }
+
+    #[inline]
+    pub fn set_flag(&mut self, f: Flag, val: bool) {
+        if val {
+            self.f |= f as u8;
+        } else {
+            self.f &= !(f as u8);
+        }
     }
 }

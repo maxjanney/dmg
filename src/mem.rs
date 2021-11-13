@@ -242,6 +242,12 @@ impl Memory {
         }
     }
 
+    // Write a word
+    pub fn ww(&mut self, addr: u16, val: u16) {
+        self.wb(addr, val as u8);
+        self.wb(addr + 1, (val >> 8) as u8);
+    }
+
     // Write byte to I/O register
     fn io_wb(&mut self, addr: u16, val: u8) {}
 }
