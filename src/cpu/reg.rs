@@ -7,19 +7,19 @@ pub const C: u8 = 1 << 4;
 
 #[derive(Debug)]
 pub struct Registers {
-    pub halted: bool,
-    pub stopped: bool,
-    pub ime: bool,
-    pub a: u8,
-    pub b: u8,
-    pub c: u8,
-    pub d: u8,
-    pub e: u8,
-    pub f: u8,
-    pub h: u8,
-    pub l: u8,
-    pub pc: u16,
-    sp: u16,
+    pub(super) halted: bool,
+    pub(super) stopped: bool,
+    pub(super) ime: bool,
+    pub(super) a: u8,
+    pub(super) b: u8,
+    pub(super) c: u8,
+    pub(super) d: u8,
+    pub(super) e: u8,
+    pub(super) f: u8,
+    pub(super) h: u8,
+    pub(super) l: u8,
+    pub(super) pc: u16,
+    pub(super) sp: u16,
 }
 
 impl Registers {
