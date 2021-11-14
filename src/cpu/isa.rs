@@ -66,6 +66,33 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
         }};
     }
 
+    macro_rules! sub_a {
+        ($n:expr, $c:expr) => {{
+            let a = regs.a;
+            let n = $n;
+            regs.set_flag(Flag::N, true);
+            regs.set_flag(Flag::H, (a & 0xf) < (n & 0xf));
+            regs.set_flag(Flag::C, (a as u16) < (n as u16));
+            regs.a = a.wrapping_sub(n);
+            regs.set_flag(Flag::Z, regs.a == 0);
+            $c
+        }};
+    }
+
+    macro_rules! sbc_a {
+        ($n:expr, $c:expr) => {{
+            let a = regs.a;
+            let n = $n;
+            let f = regs.get_flag(Flag::C);
+            regs.set_flag(Flag::N, true);
+            regs.set_flag(Flag::H, (a & 0xf) < (n & 0xf) + f);
+            regs.set_flag(Flag::C, (a as u16) < (n as u16) + (f as u16));
+            regs.a = a.wrapping_sub(n).wrapping_sub(f);
+            regs.set_flag(Flag::Z, regs.a == 0);
+            $c
+        }};
+    }
+
     macro_rules! push_rr {
         ($r1:ident, $r2:ident) => {{
             mem.wb(regs.sp - 1, regs.$r1);
@@ -237,12 +264,30 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
         0x8d => adc_a!(regs.l, 4),              // ADC A, L
         0x8e => adc_a!(mem.rb(regs.hl()), 8),   // ADC A, (HL)
         0x8f => adc_a!(regs.a, 4),              // ADC A, A
+        0x90 => sub_a!(regs.b, 4),              // SUB B
+        0x91 => sub_a!(regs.c, 4),              // SUB C
+        0x92 => sub_a!(regs.d, 4),              // SUB D
+        0x93 => sub_a!(regs.e, 4),              // SUB E
+        0x94 => sub_a!(regs.h, 4),              // SUB H
+        0x95 => sub_a!(regs.l, 4),              // SUB L
+        0x96 => sub_a!(mem.rb(regs.hl()), 8),   // SUB (HL)
+        0x97 => sub_a!(regs.a, 4),              // SUB A
+        0x98 => sbc_a!(regs.b, 4),              // SBC A, B
+        0x99 => sbc_a!(regs.c, 4),              // SBC A, C
+        0x9a => sbc_a!(regs.d, 4),              // SBC A, D
+        0x9b => sbc_a!(regs.e, 4),              // SBC A, E
+        0x9c => sbc_a!(regs.h, 4),              // SBC A, H
+        0x9d => sbc_a!(regs.l, 4),              // SBC A, L
+        0x9e => sbc_a!(mem.rb(regs.hl()), 8),   // SBC A, (HL)
+        0x9f => sbc_a!(regs.a, 4),              // SBC A, A
         0xc1 => pop_rr!(b, c),                  // POP BC
         0xc5 => push_rr!(b, c),                 // PUSH BC
         0xc6 => add_a!(mem.rb(regs.bump()), 8), // ADD A, n
         0xce => add_a!(mem.rb(regs.bump()), 8), // ADC A, n
         0xd1 => push_rr!(d, e),                 // POP DE
         0xd5 => push_rr!(d, e),                 // PUSH DE
+        0xd6 => sub_a!(mem.rb(regs.bump()), 8), // SUB n
+        0xde => sbc_a!(mem.rb(regs.bump()), 8), // SBC A, n
         0xe0 => {
             // LD (n), A
             let n = mem.rb(regs.bump()) as u16;
