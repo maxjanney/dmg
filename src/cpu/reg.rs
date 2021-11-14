@@ -1,5 +1,3 @@
-use std::fmt;
-
 #[derive(Clone, Copy)]
 pub enum Flag {
     Z = 1 << 7,
@@ -36,7 +34,7 @@ impl Registers {
             c: 0x13,
             d: 0x00,
             e: 0xd8,
-            f: 0,
+            f: 0x00,
             h: 0x01,
             l: 0x4d,
             sp: 0xfffe,

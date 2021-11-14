@@ -59,7 +59,7 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
             let f = regs.get_flag(Flag::C);
             regs.set_flag(Flag::N, false);
             regs.set_flag(Flag::H, (a & 0xf) + (n & 0xf) + f > 0xf);
-            regs.set_flag(Flag::C, a as u16 + n as u16 + f as u16 > 0xff);
+            regs.set_flag(Flag::C, (a as u16) + (n as u16) + (f as u16) > 0xff);
             regs.a = a.wrapping_add(n).wrapping_add(f);
             regs.set_flag(Flag::Z, regs.a == 0);
             $c
@@ -72,7 +72,7 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
             let n = $n;
             regs.set_flag(Flag::N, true);
             regs.set_flag(Flag::H, (a & 0xf) < (n & 0xf));
-            regs.set_flag(Flag::C, (a as u16) < (n as u16));
+            regs.set_flag(Flag::C, a < n);
             regs.a = a.wrapping_sub(n);
             regs.set_flag(Flag::Z, regs.a == 0);
             $c
@@ -90,6 +90,104 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
             regs.a = a.wrapping_sub(n).wrapping_sub(f);
             regs.set_flag(Flag::Z, regs.a == 0);
             $c
+        }};
+    }
+
+    macro_rules! and_a {
+        ($n:expr, $c:expr) => {{
+            regs.a &= $n;
+            regs.set_flag(Flag::Z, regs.a == 0);
+            regs.set_flag(Flag::N, false);
+            regs.set_flag(Flag::H, true);
+            regs.set_flag(Flag::C, false);
+            $c
+        }};
+    }
+
+    macro_rules! or_n {
+        ($n:expr, $c:expr) => {{
+            regs.a |= $n;
+            regs.set_flag(Flag::Z, regs.a == 0);
+            regs.set_flag(Flag::N, false);
+            regs.set_flag(Flag::H, false);
+            regs.set_flag(Flag::C, false);
+            $c
+        }};
+    }
+
+    macro_rules! xor_a {
+        ($n:expr, $c:expr) => {{
+            regs.a ^= $n;
+            regs.set_flag(Flag::Z, regs.a == 0);
+            regs.set_flag(Flag::N, false);
+            regs.set_flag(Flag::H, false);
+            regs.set_flag(Flag::C, false);
+            $c
+        }};
+    }
+
+    macro_rules! cp_a {
+        ($n:expr, $c:expr) => {{
+            let n = $n;
+            regs.set_flag(Flag::Z, regs.a == n);
+            regs.set_flag(Flag::N, true);
+            regs.set_flag(Flag::C, regs.a < n);
+            regs.set_flag(Flag::H, (regs.a & 0xf) < (n & 0xf));
+            $c
+        }};
+    }
+
+    macro_rules! inc_r {
+        ($reg:ident) => {{
+            regs.$reg = regs.$reg.wrapping_add(1);
+            regs.set_flag(Flag::Z, regs.$reg == 0);
+            regs.set_flag(Flag::N, false);
+            regs.set_flag(Flag::H, regs.$reg & 0xf == 0);
+            4
+        }};
+    }
+
+    macro_rules! dec_r {
+        ($reg:ident) => {{
+            regs.set_flag(Flag::N, true);
+            regs.set_flag(Flag::H, regs.$reg.trailing_zeros() >= 4);
+            regs.$reg = regs.$reg.wrapping_sub(1);
+            regs.set_flag(Flag::Z, regs.$reg == 0);
+            4
+        }};
+    }
+
+    macro_rules! add_hl_rr {
+        ($n:expr) => {{
+            let hl = regs.hl();
+            let n = $n;
+            regs.set_flag(Flag::N, false);
+            regs.set_flag(Flag::H, (hl & 0xfff) + (n & 0xfff) > 0xfff);
+            regs.set_flag(Flag::C, hl > 0xfff - n);
+            let r = hl.wrapping_add(n);
+            regs.l = r as u8;
+            regs.h = (r >> 8) as u8;
+            8
+        }};
+    }
+
+    macro_rules! inc_rr {
+        ($r1:ident, $r2:ident) => {{
+            regs.$r2 = regs.$r2.wrapping_add(1);
+            if regs.$r2 == 0 {
+                regs.$r1 += 1;
+            }
+            8
+        }};
+    }
+
+    macro_rules! dec_rr {
+        ($r1:ident, $r2:ident) => {{
+            regs.$r2 = regs.$r2.wrapping_sub(1);
+            if regs.$r2 == 0xff {
+                regs.$r1 -= 1;
+            }
+            8
         }};
     }
 
@@ -119,7 +217,10 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
             mem.wb(regs.bc(), regs.a);
             8
         }
-        0x06 => ld_rn!(b), // LD B, n
+        0x03 => inc_rr!(b, c), // INC BC
+        0x04 => inc_r!(b),     // INC B
+        0x05 => dec_r!(b),     // DEC B
+        0x06 => ld_rn!(b),     // LD B, n
         0x08 => {
             // LD
             let n = mem.rw(regs.pc);
@@ -127,11 +228,15 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
             regs.pc += 2;
             20
         }
+        0x09 => add_hl_rr!(regs.bc()), // ADD HL, BC
         0x0a => {
             // LD A, (BC)
             regs.a = mem.rb(regs.bc());
             8
         }
+        0x0b => dec_rr!(b, c),   // DEC BC
+        0x0c => inc_r!(c),       // INC C
+        0x0d => dec_r!(c),       // DEC C
         0x0e => ld_rn!(c),       // LD C, n
         0x11 => ld_rr_nn!(d, e), // LD DE, nn
         0x12 => {
@@ -139,12 +244,19 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
             mem.wb(regs.de(), regs.a);
             8
         }
-        0x16 => ld_rn!(d), // LD D, n
+        0x13 => inc_rr!(d, e),         // INC DE
+        0x14 => inc_r!(d),             // INC D
+        0x15 => dec_r!(d),             // DEC D
+        0x16 => ld_rn!(d),             // LD D, n
+        0x19 => add_hl_rr!(regs.de()), // ADD HL, DE
         0x1a => {
             // LD A,(DE)
             regs.a = mem.rb(regs.de());
             8
         }
+        0x1b => dec_rr!(d, e),   // DEC DE
+        0x1c => inc_r!(e),       // INC E
+        0x1d => dec_r!(e),       // DEC E
         0x1e => ld_rn!(e),       // LD E, n
         0x21 => ld_rr_nn!(h, l), // LD HL, nn
         0x22 => {
@@ -153,14 +265,21 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
             regs.inc_hl();
             8
         }
-        0x26 => ld_rn!(h), // LD H ,n
+        0x23 => inc_rr!(h, l),         // INC HL
+        0x24 => inc_r!(h),             // INC H
+        0x25 => dec_r!(h),             // DEC H
+        0x26 => ld_rn!(h),             // LD H ,n
+        0x29 => add_hl_rr!(regs.hl()), // ADD HL, HL
         0x2a => {
             // LD A, (HL+)
             regs.a = mem.rb(regs.hl());
             regs.inc_hl();
             8
         }
-        0x2e => ld_rn!(l), // LD L, n
+        0x2b => dec_rr!(h, l), // DEC HL
+        0x2c => inc_r!(l),     // INC L
+        0x2d => dec_r!(l),     // DEC L
+        0x2e => ld_rn!(l),     // LD L, n
         0x31 => {
             // LD SP, nn
             regs.sp = mem.rw(regs.pc);
@@ -173,17 +292,31 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
             regs.dec_hl();
             8
         }
+        0x33 => {
+            // INC SP
+            regs.sp = regs.sp.wrapping_add(1);
+            8
+        }
+        0x35 => dec_hln(regs, mem),
         0x36 => {
             // LD (HL), n
             mem.wb(regs.hl(), mem.rb(regs.bump()));
             12
         }
+        0x39 => add_hl_rr!(regs.sp), // ADD HL, SP
         0x3a => {
             // LDD A, (HL-)
             regs.a = mem.rb(regs.hl());
             regs.dec_hl();
             8
         }
+        0x3b => {
+            // DEC SP
+            regs.sp = regs.sp.wrapping_sub(1);
+            8
+        }
+        0x3c => inc_r!(a),                      // INC A
+        0x3d => dec_r!(a),                      // DEC A
         0x3e => ld_rn!(a),                      // LD A, n
         0x40 => ld_rr!(b, b),                   // LD B, B
         0x41 => ld_rr!(b, c),                   // LD B, C
@@ -280,6 +413,38 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
         0x9d => sbc_a!(regs.l, 4),              // SBC A, L
         0x9e => sbc_a!(mem.rb(regs.hl()), 8),   // SBC A, (HL)
         0x9f => sbc_a!(regs.a, 4),              // SBC A, A
+        0xa0 => and_a!(regs.b, 4),              // AND B
+        0xa1 => and_a!(regs.c, 4),              // AND C
+        0xa2 => and_a!(regs.d, 4),              // AND D
+        0xa3 => and_a!(regs.e, 4),              // AND E
+        0xa4 => and_a!(regs.h, 4),              // AND H
+        0xa5 => and_a!(regs.l, 4),              //  AND L
+        0xa6 => and_a!(mem.rb(regs.hl()), 8),   // AND (HL)
+        0xa7 => and_a!(regs.a, 4),              // AND A
+        0xa8 => xor_a!(regs.b, 4),              // XOR B
+        0xa9 => xor_a!(regs.c, 4),              // XOR C
+        0xaa => xor_a!(regs.d, 4),              // XOR D
+        0xab => xor_a!(regs.e, 4),              // XOR E
+        0xac => xor_a!(regs.h, 4),              // XOR H
+        0xad => xor_a!(regs.l, 4),              // XOR L
+        0xae => xor_a!(mem.rb(regs.hl()), 8),   // XOR (HL)
+        0xaf => xor_a!(regs.a, 4),              // XOR A
+        0xb0 => or_n!(regs.b, 4),               // OR B
+        0xb1 => or_n!(regs.c, 4),               // OR C
+        0xb2 => or_n!(regs.d, 4),               // OR D
+        0xb3 => or_n!(regs.e, 4),               // OR E
+        0xb4 => or_n!(regs.h, 4),               // OR H
+        0xb5 => or_n!(regs.l, 4),               // OR L
+        0xb6 => or_n!(mem.rb(regs.hl()), 8),    // OR (HL)
+        0xb7 => or_n!(regs.a, 4),               // OR A
+        0xb8 => cp_a!(regs.b, 4),               // CP B
+        0xb9 => cp_a!(regs.c, 4),               // CP C
+        0xba => cp_a!(regs.d, 4),               // CP D
+        0xbb => cp_a!(regs.e, 4),               // CP E
+        0xbc => cp_a!(regs.h, 4),               // CP H
+        0xbd => cp_a!(regs.l, 4),               // CP L
+        0xbe => cp_a!(mem.rb(regs.hl()), 8),    // CP (HL)
+        0xbf => cp_a!(regs.a, 4),               // CP A
         0xc1 => pop_rr!(b, c),                  // POP BC
         0xc5 => push_rr!(b, c),                 // PUSH BC
         0xc6 => add_a!(mem.rb(regs.bump()), 8), // ADD A, n
@@ -300,13 +465,16 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
             mem.wb(0xff00 | (regs.c as u16), regs.a);
             8
         }
-        0xe5 => push_rr!(h, l), // PUSH HL
+        0xe5 => push_rr!(h, l),                 // PUSH HL
+        0xe6 => and_a!(mem.rb(regs.bump()), 8), // AND n
+        0xe8 => add_sp_n(regs, mem),            // ADD SP, n
         0xea => {
             // LD (nn), A
             mem.wb(mem.rw(regs.pc), regs.a);
             regs.pc += 2;
             16
         }
+        0xee => xor_a!(mem.rb(regs.bump()), 8), // XOR n
         0xf0 => {
             // LD A, (n)
             let n = regs.bump();
@@ -319,8 +487,9 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
             regs.a = mem.rb(0xff00 | (regs.c as u16));
             8
         }
-        0xf5 => push_rr!(a, f),       // PUSH AF
-        0xf8 => ld_hl_spn(regs, mem), // LDHL SP,n
+        0xf5 => push_rr!(a, f),                // PUSH AF
+        0xf6 => or_n!(mem.rb(regs.bump()), 8), // OR n
+        0xf8 => ld_hl_spn(regs, mem),          // LDHL SP,n
         0xf9 => {
             // LD SP, HL
             regs.sp = regs.hl();
@@ -336,13 +505,36 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
     }
 }
 
-// LDHL HL, SP+i8
 fn ld_hl_spn(regs: &mut Registers, mem: &mut Memory) -> u32 {
     // sign extend n
     let n = mem.rb(regs.bump()) as i8 as i16 as u16;
-    let res = regs.sp + n;
-    regs.h = (res >> 8) as u8;
-    regs.l = res as u8;
-    // TODO: update flags
+    regs.set_flag(Flag::Z, false);
+    regs.set_flag(Flag::N, false);
+    regs.set_flag(Flag::H, (regs.sp & 0xf) + (n & 0xf) > 0xf);
+    regs.set_flag(Flag::C, (regs.sp & 0xff) + (n & 0xff) > 0xff);
+    let r = regs.sp.wrapping_add(n);
+    regs.l = r as u8;
+    regs.h = (r >> 8) as u8;
+    12
+}
+
+fn add_sp_n(regs: &mut Registers, mem: &mut Memory) -> u32 {
+    // sign extend n
+    let n = mem.rb(regs.bump()) as i8 as i16 as u16;
+    regs.set_flag(Flag::Z, false);
+    regs.set_flag(Flag::N, false);
+    regs.set_flag(Flag::H, (regs.sp & 0xf) + (n & 0xf) > 0xf);
+    regs.set_flag(Flag::C, (regs.sp & 0xff) + (n & 0xff) > 0xff);
+    regs.sp = regs.sp.wrapping_add(n);
+    16
+}
+
+fn dec_hln(regs: &mut Registers, mem: &mut Memory) -> u32 {
+    let hl = regs.hl();
+    let n = mem.rb(hl).wrapping_sub(1);
+    mem.wb(hl, n);
+    regs.set_flag(Flag::Z, n == 0);
+    regs.set_flag(Flag::N, true);
+    regs.set_flag(Flag::H, n & 0xf == 0xf);
     12
 }

@@ -5,6 +5,5 @@ mod mem;
 use cpu::reg::Registers;
 
 fn main() {
-    let r = Registers::new();
-    println!("{}", r);
+    println!("Hello m8");
 }
