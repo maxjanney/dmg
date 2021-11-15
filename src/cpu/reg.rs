@@ -1,44 +1,42 @@
-#[derive(Clone, Copy)]
-pub enum Flag {
-    Z = 1 << 7,
-    N = 1 << 6,
-    H = 1 << 5,
-    C = 1 << 4,
+use bitflags::bitflags;
+
+bitflags! {
+    #[derive(Default)]
+    pub struct Flag: u8 {
+        const C = 0b0001_0000;
+        const H = 0b0010_0000;
+        const N = 0b0100_0000;
+        const Z = 0b1000_0000;
+    }
 }
 
 #[derive(Debug)]
 pub struct Registers {
-    pub(super) halted: bool,
-    pub(super) stopped: bool,
-    pub(super) ime: bool,
     pub(super) a: u8,
     pub(super) b: u8,
     pub(super) c: u8,
     pub(super) d: u8,
     pub(super) e: u8,
-    pub(super) f: u8,
     pub(super) h: u8,
     pub(super) l: u8,
     pub(super) pc: u16,
     pub(super) sp: u16,
+    pub(super) f: Flag,
 }
 
 impl Registers {
     pub fn new() -> Self {
         Self {
-            halted: false,
-            stopped: false,
-            ime: false,
             a: 0x01,
             b: 0x00,
             c: 0x13,
             d: 0x00,
             e: 0xd8,
-            f: 0x00,
             h: 0x01,
             l: 0x4d,
             sp: 0xfffe,
             pc: 0x0100,
+            f: Flag::default(),
         }
     }
 
@@ -74,20 +72,6 @@ impl Registers {
         self.l = self.l.wrapping_sub(1);
         if self.l == 0xff {
             self.h -= 1;
-        }
-    }
-
-    #[inline]
-    pub fn get_flag(&self, f: Flag) -> u8 {
-        ((self.f & f as u8) != 0) as u8
-    }
-
-    #[inline]
-    pub fn set_flag(&mut self, f: Flag, val: bool) {
-        if val {
-            self.f |= f as u8;
-        } else {
-            self.f &= !(f as u8);
         }
     }
 }
