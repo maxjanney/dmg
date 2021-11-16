@@ -265,6 +265,7 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
         0x24 => inc_r!(h),             // INC H
         0x25 => dec_r!(h),             // DEC H
         0x26 => ld_rn!(h),             // LD H ,n
+        0x27 => daa(regs),             // DAA
         0x29 => add_hl_rr!(regs.hl()), // ADD HL, HL
         0x2a => {
             // LD A, (HL+)
@@ -276,6 +277,12 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
         0x2c => inc_r!(l),     // INC L
         0x2d => dec_r!(l),     // DEC L
         0x2e => ld_rn!(l),     // LD L, n
+        0x2f => {
+            // CPL
+            regs.a = !regs.a;
+            regs.f.insert(Flag::N | Flag::H);
+            4
+        }
         0x31 => {
             // LD SP, nn
             regs.sp = mem.rw(regs.pc);
@@ -299,6 +306,12 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
             mem.wb(regs.hl(), mem.rb(regs.bump()));
             12
         }
+        0x37 => {
+            // SCF
+            regs.f.remove(Flag::N | Flag::H);
+            regs.f.insert(Flag::C);
+            4
+        }
         0x39 => add_hl_rr!(regs.sp), // ADD HL, SP
         0x3a => {
             // LDD A, (HL-)
@@ -311,9 +324,15 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
             regs.sp = regs.sp.wrapping_sub(1);
             8
         }
-        0x3c => inc_r!(a),                      // INC A
-        0x3d => dec_r!(a),                      // DEC A
-        0x3e => ld_rn!(a),                      // LD A, n
+        0x3c => inc_r!(a), // INC A
+        0x3d => dec_r!(a), // DEC A
+        0x3e => ld_rn!(a), // LD A, n
+        0x3f => {
+            // CCF
+            regs.f.toggle(Flag::C);
+            regs.f.remove(Flag::N | Flag::H);
+            4
+        }
         0x40 => ld_rr!(b, b),                   // LD B, B
         0x41 => ld_rr!(b, c),                   // LD B, C
         0x42 => ld_rr!(b, d),                   // LD B, D
@@ -537,4 +556,10 @@ fn dec_hln(regs: &mut Registers, mem: &mut Memory) -> u32 {
     regs.f.insert(Flag::N);
     regs.f.set(Flag::H, n & 0xf == 0xf);
     12
+}
+
+fn daa(regs: &mut Registers) -> u32 {
+    // WTF is the DAA instruction??
+    regs.f.remove(Flag::H);
+    4
 }
