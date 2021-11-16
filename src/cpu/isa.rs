@@ -217,6 +217,15 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
         0x04 => inc_r!(b),     // INC B
         0x05 => dec_r!(b),     // DEC B
         0x06 => ld_rn!(b),     // LD B, n
+        0x07 => {
+            // RLCA
+            let c = regs.a & 0x80 != 0;
+            regs.a = (regs.a << 1) | (c as u8);
+            regs.f.set(Flag::C, c);
+            regs.f.set(Flag::Z, regs.a == 0);
+            regs.f.remove(Flag::N | Flag::H);
+            4
+        }
         0x08 => {
             // LD
             let n = mem.rw(regs.pc);
@@ -230,30 +239,58 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
             regs.a = mem.rb(regs.bc());
             8
         }
-        0x0b => dec_rr!(b, c),   // DEC BC
-        0x0c => inc_r!(c),       // INC C
-        0x0d => dec_r!(c),       // DEC C
-        0x0e => ld_rn!(c),       // LD C, n
+        0x0b => dec_rr!(b, c), // DEC BC
+        0x0c => inc_r!(c),     // INC C
+        0x0d => dec_r!(c),     // DEC C
+        0x0e => ld_rn!(c),     // LD C, n
+        0x0f => {
+            // RRCA
+            let c = regs.a & 0x01;
+            regs.a = (regs.a >> 1) | (c << 7);
+            regs.f.set(Flag::C, c != 0);
+            regs.f.set(Flag::Z, regs.a == 0);
+            regs.f.remove(Flag::N | Flag::H);
+            4
+        }
         0x11 => ld_rr_nn!(d, e), // LD DE, nn
         0x12 => {
             // LD (DE), A
             mem.wb(regs.de(), regs.a);
             8
         }
-        0x13 => inc_rr!(d, e),         // INC DE
-        0x14 => inc_r!(d),             // INC D
-        0x15 => dec_r!(d),             // DEC D
-        0x16 => ld_rn!(d),             // LD D, n
+        0x13 => inc_rr!(d, e), // INC DE
+        0x14 => inc_r!(d),     // INC D
+        0x15 => dec_r!(d),     // DEC D
+        0x16 => ld_rn!(d),     // LD D, n
+        0x17 => {
+            // RLA
+            let c = regs.a & 0x80 != 0;
+            regs.a = (regs.a << 1) | (regs.f.contains(Flag::C) as u8);
+            regs.f.set(Flag::C, c);
+            regs.f.set(Flag::Z, regs.a == 0);
+            regs.f.remove(Flag::N | Flag::H);
+            4
+        }
         0x19 => add_hl_rr!(regs.de()), // ADD HL, DE
         0x1a => {
             // LD A,(DE)
             regs.a = mem.rb(regs.de());
             8
         }
-        0x1b => dec_rr!(d, e),   // DEC DE
-        0x1c => inc_r!(e),       // INC E
-        0x1d => dec_r!(e),       // DEC E
-        0x1e => ld_rn!(e),       // LD E, n
+        0x1b => dec_rr!(d, e), // DEC DE
+        0x1c => inc_r!(e),     // INC E
+        0x1d => dec_r!(e),     // DEC E
+        0x1e => ld_rn!(e),     // LD E, n
+        0x1f => {
+            // RRA
+            let c = (regs.f.contains(Flag::C) as u8) << 7;
+            let zero_bit = regs.a & 0x1 != 0;
+            regs.a = (regs.a >> 1) | c;
+            regs.f.set(Flag::C, zero_bit);
+            regs.f.set(Flag::Z, regs.a == 0);
+            regs.f.remove(Flag::N | Flag::H);
+            4
+        }
         0x21 => ld_rr_nn!(h, l), // LD HL, nn
         0x22 => {
             // LD (HL+), A
