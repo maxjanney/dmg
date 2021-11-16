@@ -1,3 +1,5 @@
+use std::ops::RangeBounds;
+
 use bitflags::bitflags;
 
 bitflags! {
@@ -40,17 +42,14 @@ impl Registers {
         }
     }
 
-    #[inline]
     pub fn bc(&self) -> u16 {
         ((self.b as u16) << 8) | (self.c as u16)
     }
 
-    #[inline]
     pub fn de(&self) -> u16 {
         ((self.d as u16) << 8) | (self.e as u16)
     }
 
-    #[inline]
     pub fn hl(&self) -> u16 {
         ((self.h as u16) << 8) | (self.l as u16)
     }
@@ -73,5 +72,30 @@ impl Registers {
         if self.l == 0xff {
             self.h -= 1;
         }
+    }
+
+    // TODO: Use these
+    pub fn flag_bits(&self) -> u8 {
+        self.f.bits()
+    }
+
+    pub fn contains(&self, f: Flag) -> bool {
+        self.f.contains(f)
+    }
+
+    pub fn toggle(&mut self, f: Flag) {
+        self.f.toggle(f);
+    }
+
+    pub fn set(&mut self, f: Flag, val: bool) {
+        self.f.set(f, val);
+    }
+
+    pub fn insert(&mut self, f: Flag) {
+        self.f.insert(f);
+    }
+
+    pub fn remove(&mut self, f: Flag) {
+        self.f.remove(f);
     }
 }
