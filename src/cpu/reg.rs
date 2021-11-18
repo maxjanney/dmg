@@ -1,5 +1,3 @@
-use std::ops::RangeBounds;
-
 use bitflags::bitflags;
 
 bitflags! {
@@ -74,7 +72,6 @@ impl Registers {
         }
     }
 
-    // TODO: Use these
     pub fn flag_bits(&self) -> u8 {
         self.f.bits()
     }
