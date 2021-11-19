@@ -337,15 +337,15 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
     match ins {
         0x00 => 4,                                                                        // NOP
         0x01 => ld_rr_nn!(b, c),                                                          // LD BC, nn
-        0x02 => { mem.wb(regs.bc(), regs.a); 8 }                                 // LD (BC), A
+        0x02 => { mem.wb(regs.bc(), regs.a); 8 }                                          // LD (BC), A
         0x03 => inc_rr!(b, c),                                                            // INC BC
         0x04 => inc_r!(b),                                                                // INC B
         0x05 => dec_r!(b),                                                                // DEC B
         0x06 => ld_rn!(b),                                                                // LD B, n
         0x07 => rlca!(regs.a),                                                            // RLCA
-        0x08 => { mem.ww(mem.rw(regs.pc), regs.sp); regs.pc += 2; 20 }      // LD
+        0x08 => { mem.ww(mem.rw(regs.pc), regs.sp); regs.pc += 2; 20 }                    // LD
         0x09 => add_hl_rr!(regs.bc()),                                                    // ADD HL, BC
-        0x0a => { regs.a = mem.rb(regs.bc()); 8 }                                    // LD A, (BC)
+        0x0a => { regs.a = mem.rb(regs.bc()); 8 }                                         // LD A, (BC)
         0x0b => dec_rr!(b, c),                                                            // DEC BC
         0x0c => inc_r!(c),                                                                // INC C
         0x0d => dec_r!(c),                                                                // DEC C
@@ -354,7 +354,7 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
         
         // TODO: 0x10
         0x11 => ld_rr_nn!(d, e),                                                          // LD DE, nn
-        0x12 => { mem.wb(regs.de(), regs.a); 8 }                                 // LD (DE), A
+        0x12 => { mem.wb(regs.de(), regs.a); 8 }                                          // LD (DE), A
         0x13 => inc_rr!(d, e),                                                            // INC DE
         0x14 => inc_r!(d),                                                                // INC D
         0x15 => dec_r!(d),                                                                // DEC D
@@ -362,7 +362,7 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
         0x17 => rla!(regs.a),                                                             // RLA 
         0x18 => jr_n!(),                                                                  // JR n
         0x19 => add_hl_rr!(regs.de()),                                                    // ADD HL, DE
-        0x1a => { regs.a = mem.rb(regs.de()); 8 }                                    // LD A,(DE)
+        0x1a => { regs.a = mem.rb(regs.de()); 8 }                                         // LD A,(DE)
         0x1b => dec_rr!(d, e),                                                            // DEC DE
         0x1c => inc_r!(e),                                                                // INC E
         0x1d => dec_r!(e),                                                                // DEC E
@@ -371,7 +371,7 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
         
         0x20 => jr_cc_n!(!regs.contains(Flag::Z)),                                        // JR NZ, n
         0x21 => ld_rr_nn!(h, l),                                                          // LD HL, nn
-        0x22 => { mem.wb(regs.hl(), regs.a); regs.inc_hl(); 8 }                  // LD (HL+), A
+        0x22 => { mem.wb(regs.hl(), regs.a); regs.inc_hl(); 8 }                           // LD (HL+), A
         0x23 => inc_rr!(h, l),                                                            // INC HL
         0x24 => inc_r!(h),                                                                // INC H
         0x25 => dec_r!(h),                                                                // DEC H
@@ -379,7 +379,7 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
         0x27 => daa(regs),                                                                // DAA
         0x28 => jr_cc_n!(regs.contains(Flag::Z)),                                         // JR Z, n
         0x29 => add_hl_rr!(regs.hl()),                                                    // ADD HL, HL
-        0x2a => { regs.a = mem.rb(regs.hl()); regs.inc_hl(); 8 }                     // LD A, (HL+)
+        0x2a => { regs.a = mem.rb(regs.hl()); regs.inc_hl(); 8 }                          // LD A, (HL+)
         0x2b => dec_rr!(h, l),                                                            // DEC HL
         0x2c => inc_r!(l),                                                                // INC L
         0x2d => dec_r!(l),                                                                // DEC L
@@ -387,16 +387,16 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
         0x2f => { regs.a = !regs.a; regs.insert(Flag::N | Flag::H); 4 }                   // CPL
         
         0x30 => jr_cc_n!(!regs.contains(Flag::C)),                                        // JR NC, n
-        0x31 => { regs.sp = mem.rw(regs.pc); regs.pc += 1; 12 }                      // LD SP, u16
-        0x32 => { mem.wb(regs.hl(), regs.a); regs.dec_hl(); 8 }                  // LD (HL-), A
+        0x31 => { regs.sp = mem.rw(regs.pc); regs.pc += 1; 12 }                           // LD SP, u16
+        0x32 => { mem.wb(regs.hl(), regs.a); regs.dec_hl(); 8 }                           // LD (HL-), A
         0x33 => { regs.sp = regs.sp.wrapping_add(1); 8 }                                  // INC SP
         // TODO: 0x34
         0x35 => dec_hln(regs, mem),                                                       // DEC (HL)
-        0x36 => { mem.wb(regs.hl(), mem.rb(regs.bump())); 12 }              // LD (HL), n
+        0x36 => { mem.wb(regs.hl(), mem.rb(regs.bump())); 12 }                            // LD (HL), n
         0x37 => { regs.remove(Flag::N | Flag::H); regs.insert(Flag::C); 4 }               // SCF
         0x38 => jr_cc_n!(regs.contains(Flag::C)),                                         // JR C, n
         0x39 => add_hl_rr!(regs.sp),                                                      // ADD HL, SP
-        0x3a => { regs.a = mem.rb(regs.hl()); regs.dec_hl(); 8 }                     // LDD A, (HL-)
+        0x3a => { regs.a = mem.rb(regs.hl()); regs.dec_hl(); 8 }                          // LDD A, (HL-)
         0x3b => { regs.sp = regs.sp.wrapping_sub(1); 8 }                                  // DEC SP
         0x3c => inc_r!(a),                                                                // INC A
         0x3d => dec_r!(a),                                                                // DEC A
@@ -550,7 +550,7 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
         0xc8 => ret_cc!(regs.contains(Flag::Z)),                                          // RET Z
         0xc9 => ret!(),                                                                   // RET
         0xca => jp_cc_nn!(regs.contains(Flag::Z)),                                        // JP Z, nn
-        0xcb => exec_cb(mem.rb(regs.bump()), regs, mem),                         // CBh       
+        0xcb => exec_cb(mem.rb(regs.bump()), regs, mem),                                  // CBh       
         0xcc => call_cc_nn!(regs.contains(Flag::Z)),                                      // CALL Z, nn
         0xcd => call_nn!(),                                                               // CALL nn
         0xce => add_a!(mem.rb(regs.bump()), 8),                                           // ADC A, n
@@ -575,7 +575,7 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
         
         0xe0 => ld_io_n(regs, mem),                                                       // LD (FF00+u8), A
         0xe1 => pop_rr!(h, l),                                                            // POP HL
-        0xe2 => { mem.wb(0xff00 | (regs.c as u16), regs.a); 8 }                  // LD (FF00+C), A
+        0xe2 => { mem.wb(0xff00 | (regs.c as u16), regs.a); 8 }                           // LD (FF00+C), A
         0xe3 => panic!("Unsupported Opcode: 0xe3"),                                       // NONE
         0xe4 => panic!("Unsupported Opcode: 0xe4"),                                       // NONE
         0xe5 => push_rr!(regs.h, regs.l),                                                 // PUSH HL
@@ -583,16 +583,16 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
         0xe7 => rst_n!(0x20),                                                             // RST 20h
         0xe8 => add_sp_n(regs, mem),                                                      // ADD SP, n
         0xe9 => { regs.pc = regs.hl(); 4 }                                                // JP (HL)
-        0xea => { mem.wb(mem.rw(regs.pc), regs.a); regs.pc += 2; 16 }       // LD (nn), A
+        0xea => { mem.wb(mem.rw(regs.pc), regs.a); regs.pc += 2; 16 }                     // LD (nn), A
         0xeb => panic!("Unsupported Opcode: 0xeb"),                                       // NONE
         0xec => panic!("Unsupported Opcode: 0xec"),                                       // NONE
         0xed => panic!("Unsupported Opcode: 0xed"),                                       // NONE
         0xee => xor_a!(mem.rb(regs.bump()), 8),                                           // XOR n
         0xef => rst_n!(0x28),                                                             // RST 28h
         
-        0xf0 => { regs.a = mem.rb(0xff00 | (mem.rb(regs.bump()) as u16)); 12 }  // LD A, (n)
+        0xf0 => { regs.a = mem.rb(0xff00 | (mem.rb(regs.bump()) as u16)); 12 }            // LD A, (n)
         0xf1 => pop_af(regs, mem),                                                        // POP AF
-        0xf2 => { regs.a = mem.rb(0xff00 | (regs.c as u16)); 8 }                     // LD A, (C)
+        0xf2 => { regs.a = mem.rb(0xff00 | (regs.c as u16)); 8 }                          // LD A, (C)
         // TODO: 0xf3
         0xf4 => panic!("Unsupported Opcode: 0xf4"),                                       // NONE
         0xf5 => push_rr!(regs.a, regs.flag_bits()),                                       // PUSH A, F
@@ -600,7 +600,7 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
         0xf7 => rst_n!(0x30),                                                             // RST 30h
         0xf8 => ld_hl_spn(regs, mem),                                                     // LDHL SP,n
         0xf9 => { regs.sp = regs.hl(); 8 }                                                // LD SP, HL
-        0xfa => { regs.a = mem.rb(mem.rw(regs.pc)); regs.pc += 2; 16 }          // LD A, (nn)
+        0xfa => { regs.a = mem.rb(mem.rw(regs.pc)); regs.pc += 2; 16 }                    // LD A, (nn)
         // TODO: 0xfb
         0xfc => panic!("Unsupported Opcode: 0xfc"),                                       // NONE
         0xfd => panic!("Unsupported Opcode: 0xfd"),                                       // NONE
