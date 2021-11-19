@@ -10,8 +10,10 @@ bitflags! {
     }
 }
 
-#[derive(Debug)]
+#[derive(Default)]
 pub struct Registers {
+    pub(super) stopped: bool,
+    pub(super) halted: bool,
     pub(super) a: u8,
     pub(super) b: u8,
     pub(super) c: u8,
@@ -28,15 +30,13 @@ impl Registers {
     pub fn new() -> Self {
         Self {
             a: 0x01,
-            b: 0x00,
             c: 0x13,
-            d: 0x00,
             e: 0xd8,
             h: 0x01,
             l: 0x4d,
             sp: 0xfffe,
             pc: 0x0100,
-            f: Flag::default(),
+            ..Default::default()
         }
     }
 
