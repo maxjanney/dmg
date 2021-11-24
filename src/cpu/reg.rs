@@ -12,18 +12,18 @@ bitflags! {
 
 #[derive(Default)]
 pub struct Registers {
-    pub(super) stopped: bool,
-    pub(super) halted: bool,
-    pub(super) a: u8,
-    pub(super) b: u8,
-    pub(super) c: u8,
-    pub(super) d: u8,
-    pub(super) e: u8,
-    pub(super) h: u8,
-    pub(super) l: u8,
-    pub(super) pc: u16,
-    pub(super) sp: u16,
-    pub(super) f: Flag,
+    pub stopped: bool,
+    pub halted: bool,
+    pub a: u8,
+    pub b: u8,
+    pub c: u8,
+    pub d: u8,
+    pub e: u8,
+    pub h: u8,
+    pub l: u8,
+    pub pc: u16,
+    pub sp: u16,
+    pub f: Flag,
 }
 
 impl Registers {

@@ -1,3 +1,5 @@
+use super::ppu::Ppu;
+
 const WRAM: usize = 0x2000;
 const HRAM: usize = 0x7f;
 
@@ -28,6 +30,7 @@ impl BankMode {
 pub struct Memory {
     if_: u8,
     ie_: u8,
+    ppu: Ppu,
     rom: Vec<u8>,
     ram: Vec<u8>,
     wram: Box<[u8; WRAM]>,
@@ -44,6 +47,7 @@ impl Memory {
         Self {
             if_: 0,
             ie_: 0,
+            ppu: Ppu::new(),
             rom: Vec::new(),
             ram: Vec::new(),
             wram: Box::new([0u8; WRAM]),
@@ -104,6 +108,8 @@ impl Memory {
                 let offset = (self.rom_bank as u32) * 0x4000;
                 self.rom[((addr as u32) - 0x4000 + offset) as usize]
             }
+            // 8000 - 9FFF VRAM
+            0x8000..=0x9fff => self.ppu.vram[(addr & 0x7fff) as usize],
             // A000-BFFF - RAM Bank 00-03, if any (Read/Write)
             0xa000..=0xbfff => {
                 if !self.ram_enabled {
@@ -120,10 +126,12 @@ impl Memory {
             // 4KB Work RAM Bank 1 (WRAM)
             // F000 - FDFF mirrors D000 - DFFF
             0xd000..=0xdfff | 0xf000..=0xfdff => self.wram[((addr & 0xfff) + 0x1000) as usize],
+            // FE00 - FE9F Sprite attribute table (OAM)
+            0xfe00..=0xfe9f => self.ppu.oam[(addr & 0xff) as usize],
             // FF00-FF7F I/O Ports
             0xff00..=0xff7f => self.io_rb(addr),
             // FF80 - FFFE HRAM
-            0xff80..=0xfffe => self.hram[(addr - 0xff80) as usize],
+            0xff80..=0xfffe => self.hram[(addr & 0x7f) as usize],
             // FFFF Interrupt enable register
             0xffff => self.ie_,
             _ => 0xff,
@@ -232,10 +240,12 @@ impl Memory {
             0xd000..=0xdfff | 0xf000..=0xfdff => {
                 self.wram[((addr & 0xfff) + 0x1000) as usize] = val;
             }
+            // FE00 - FE9F Sprite attribute table (OAM)
+            0xfe000..=0xfe9f => self.ppu.oam[(addr & 0xff) as usize] = val,
             // FF00-FF7F I/O Ports
             0xff00..=0xff7f => self.io_wb(addr, val),
             // FF80 - FFFE HRAM
-            0xff80..=0xfffe => self.hram[(addr - 0xff80) as usize] = val,
+            0xff80..=0xfffe => self.hram[(addr & 0x7f) as usize] = val,
             // FFFF Interrupt enable register
             0xffff => self.ie_ = val,
             _ => {}
