@@ -1,58 +1,53 @@
-#[derive(Clone, Copy)]
-pub enum Flag {
-    Z = 1 << 7,
-    N = 1 << 6,
-    H = 1 << 5,
-    C = 1 << 4,
+use bitflags::bitflags;
+
+bitflags! {
+    #[derive(Default)]
+    pub struct Flag: u8 {
+        const C = 0b0001_0000;
+        const H = 0b0010_0000;
+        const N = 0b0100_0000;
+        const Z = 0b1000_0000;
+    }
 }
 
-#[derive(Debug)]
+#[derive(Default)]
 pub struct Registers {
-    pub(super) halted: bool,
-    pub(super) stopped: bool,
-    pub(super) ime: bool,
-    pub(super) a: u8,
-    pub(super) b: u8,
-    pub(super) c: u8,
-    pub(super) d: u8,
-    pub(super) e: u8,
-    pub(super) f: u8,
-    pub(super) h: u8,
-    pub(super) l: u8,
-    pub(super) pc: u16,
-    pub(super) sp: u16,
+    pub stopped: bool,
+    pub halted: bool,
+    pub a: u8,
+    pub b: u8,
+    pub c: u8,
+    pub d: u8,
+    pub e: u8,
+    pub h: u8,
+    pub l: u8,
+    pub pc: u16,
+    pub sp: u16,
+    pub f: Flag,
 }
 
 impl Registers {
     pub fn new() -> Self {
         Self {
-            halted: false,
-            stopped: false,
-            ime: false,
             a: 0x01,
-            b: 0x00,
             c: 0x13,
-            d: 0x00,
             e: 0xd8,
-            f: 0x00,
             h: 0x01,
             l: 0x4d,
             sp: 0xfffe,
             pc: 0x0100,
+            ..Default::default()
         }
     }
 
-    #[inline]
     pub fn bc(&self) -> u16 {
         ((self.b as u16) << 8) | (self.c as u16)
     }
 
-    #[inline]
     pub fn de(&self) -> u16 {
         ((self.d as u16) << 8) | (self.e as u16)
     }
 
-    #[inline]
     pub fn hl(&self) -> u16 {
         ((self.h as u16) << 8) | (self.l as u16)
     }
@@ -77,17 +72,27 @@ impl Registers {
         }
     }
 
-    #[inline]
-    pub fn get_flag(&self, f: Flag) -> u8 {
-        ((self.f & f as u8) != 0) as u8
+    pub fn flag_bits(&self) -> u8 {
+        self.f.bits()
     }
 
-    #[inline]
-    pub fn set_flag(&mut self, f: Flag, val: bool) {
-        if val {
-            self.f |= f as u8;
-        } else {
-            self.f &= !(f as u8);
-        }
+    pub fn contains(&self, f: Flag) -> bool {
+        self.f.contains(f)
+    }
+
+    pub fn toggle(&mut self, f: Flag) {
+        self.f.toggle(f);
+    }
+
+    pub fn set(&mut self, f: Flag, val: bool) {
+        self.f.set(f, val);
+    }
+
+    pub fn insert(&mut self, f: Flag) {
+        self.f.insert(f);
+    }
+
+    pub fn remove(&mut self, f: Flag) {
+        self.f.remove(f);
     }
 }

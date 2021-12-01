@@ -1,5 +1,3 @@
-use core::time;
-
 use crate::{cpu::Cpu, mem::Memory};
 
 // The gameboy runs 70224 clock cycles a frame
