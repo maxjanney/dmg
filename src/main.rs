@@ -1,8 +1,9 @@
 mod cpu;
 mod gb;
+mod input;
 mod mem;
-
-use cpu::reg::Registers;
+mod ppu;
+mod timer;
 
 fn main() {
     println!("Hello m8");

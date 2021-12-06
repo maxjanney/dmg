@@ -1,4 +1,4 @@
-use super::ppu::Ppu;
+use crate::{input::Input, ppu::Ppu, timer::Timer};
 
 const WRAM: usize = 0x2000;
 const HRAM: usize = 0x7f;
@@ -30,6 +30,8 @@ impl BankMode {
 pub struct Memory {
     if_: u8,
     ie_: u8,
+    timer: Timer,
+    input: Input,
     ppu: Ppu,
     rom: Vec<u8>,
     ram: Vec<u8>,
@@ -47,6 +49,8 @@ impl Memory {
         Self {
             if_: 0,
             ie_: 0,
+            timer: Timer::new(),
+            input: Input::new(),
             ppu: Ppu::new(),
             rom: Vec::new(),
             ram: Vec::new(),
@@ -145,7 +149,17 @@ impl Memory {
 
     // Read byte from I/O register
     fn io_rb(&self, addr: u16) -> u8 {
-        0
+        match (addr >> 4) & 0xf {
+            0x0 => match addr & 0xf {
+                0x0 => self.input.rb(),
+                0x4 => self.timer.div,
+                0x5 => self.timer.tima,
+                0x6 => self.timer.tma,
+                0x7 => self.timer.tac,
+                _ => 0xff,
+            },
+            _ => 0xff,
+        }
     }
 
     // Write a byte
@@ -241,7 +255,7 @@ impl Memory {
                 self.wram[((addr & 0xfff) + 0x1000) as usize] = val;
             }
             // FE00 - FE9F Sprite attribute table (OAM)
-            0xfe000..=0xfe9f => self.ppu.oam[(addr & 0xff) as usize] = val,
+            0xfe00..=0xfe9f => self.ppu.oam[(addr & 0xff) as usize] = val,
             // FF00-FF7F I/O Ports
             0xff00..=0xff7f => self.io_wb(addr, val),
             // FF80 - FFFE HRAM
@@ -259,5 +273,17 @@ impl Memory {
     }
 
     // Write byte to I/O register
-    fn io_wb(&mut self, addr: u16, val: u8) {}
+    fn io_wb(&mut self, addr: u16, val: u8) {
+        match (addr >> 4) & 0xf {
+            0x0 => match addr & 0xf {
+                0x4 => self.timer.div = 0,
+                0x5 => self.timer.tima = val,
+                0x6 => self.timer.tma = val,
+                0x7 => self.timer.update(val),
+                0xf => self.if_ = val,
+                _ => {}
+            },
+            _ => {}
+        }
+    }
 }

@@ -8,6 +8,15 @@ pub struct Gameboy {
     mem: Memory,
 }
 
+#[derive(Clone, Copy)]
+pub enum Interrupt {
+    VBlank = 1 << 0,
+    LCD = 1 << 1,
+    Timer = 1 << 2,
+    Serial = 1 << 3,
+    Joypad = 1 << 4,
+}
+
 impl Gameboy {
     pub fn new() -> Self {
         let mut gb = Gameboy {
@@ -17,6 +26,4 @@ impl Gameboy {
         gb.mem.power_up();
         gb
     }
-
-    pub fn frame(&mut self) {}
 }
