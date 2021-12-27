@@ -1,5 +1,5 @@
 const VRAM_SIZE: usize = 0x2000;
-const OAM_SIZE: usize = 0xa0;
+pub const OAM_SIZE: usize = 0xa0;
 
 type Color = [u8; 4];
 
@@ -179,7 +179,7 @@ impl Ppu {
             0x43 => self.scx = val,
             // 0x44 Read only
             0x45 => self.lyc = val,
-            // 0x46 TODO: oam/dma transfer
+            // 0x46 oam/dma transfer in mem
             0x47 => {
                 self.bgp = val;
                 update_palette(&mut self.pal.bgp, val);

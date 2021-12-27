@@ -1,4 +1,4 @@
-use crate::{input::Input, ppu::Ppu, timer::Timer};
+use crate::{input::Input, ppu::{Ppu, self}, timer::Timer};
 
 const WRAM: usize = 0x2000;
 const HRAM: usize = 0x7f;
@@ -284,7 +284,22 @@ impl Memory {
                 0xf => self.if_ = val,
                 _ => {}
             },
+            0x4 => {
+                if addr == 0xff46 {
+                    self.oam_dma_transfer(val);
+                } else {
+                    self.ppu.wb(addr, val);
+                }
+            }
             _ => {}
+        }
+    }
+
+    // DMA transfer from ROM or RAM to OAM
+    fn oam_dma_transfer(&mut self, val: u8) {
+        let src = (val as u16) << 8;
+        for i in 0..ppu::OAM_SIZE as u16 {
+            self.ppu.oam[i as usize] = self.rb(src | i);
         }
     }
 }
