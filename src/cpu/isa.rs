@@ -104,8 +104,7 @@ pub fn exec(ins: u8, regs: &mut Registers, mem: &mut Memory) -> u32 {
             let f = regs.contains(Flag::C) as u8;
             regs.remove(Flag::N);
             regs.set(Flag::H, (a & 0xf) + (n & 0xf) + f > 0xf);
-            regs.f
-                .set(Flag::C, (a as u16) + (n as u16) + (f as u16) > 0xff);
+            regs.set(Flag::C, (a as u16) + (n as u16) + (f as u16) > 0xff);
             regs.a = a.wrapping_add(n).wrapping_add(f);
             regs.set(Flag::Z, regs.a == 0);
             $c

@@ -158,6 +158,7 @@ impl Memory {
                 0x7 => self.timer.tac,
                 _ => 0xff,
             },
+            0x4 => self.ppu.rb(addr),
             _ => 0xff,
         }
     }

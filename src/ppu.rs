@@ -1,6 +1,28 @@
 const VRAM_SIZE: usize = 0x2000;
 const OAM_SIZE: usize = 0xa0;
 
+type Color = [u8; 4];
+
+const PALETTE: [Color; 4] = [
+    // White
+    [255, 255, 255, 255],
+    // Light gray
+    [211, 211, 211, 255],
+    // Dark gray
+    [169, 169, 169, 255],
+    // Black
+    [0, 0, 0, 255],
+];
+
+struct Palette {
+    // Background and window tiles
+    bgp: [Color; 4],
+    // Sprite palette 0
+    sp0: [Color; 4],
+    // Sprite palette 1
+    sp1: [Color; 4],
+}
+
 #[derive(Copy, Clone, Debug)]
 enum Mode {
     HBlank,
@@ -12,6 +34,7 @@ enum Mode {
 pub struct Ppu {
     pub vram: [u8; VRAM_SIZE],
     pub oam: [u8; OAM_SIZE],
+    pal: Palette,
     // LCD Control at 0xff40
     // LCD and PPU enable
     lcd_enabled: bool,
@@ -69,6 +92,11 @@ impl Ppu {
         Self {
             vram: [0u8; VRAM_SIZE],
             oam: [0u8; OAM_SIZE],
+            pal: Palette {
+                bgp: [[0; 4]; 4],
+                sp0: [[0; 4]; 4],
+                sp1: [[0; 4]; 4],
+            },
             lcd_enabled: false,
             win_map: false,
             win_enabled: false,
@@ -93,4 +121,87 @@ impl Ppu {
             obp1: 0,
         }
     }
+
+    pub fn rb(&self, addr: u16) -> u8 {
+        match addr & 0xff {
+            0x40 => {
+                ((self.lcd_enabled as u8) << 7)
+                    | ((self.win_map as u8) << 6)
+                    | ((self.win_enabled as u8) << 5)
+                    | ((self.tile_dat as u8) << 4)
+                    | ((self.bg_map as u8) << 3)
+                    | ((self.obj_size as u8) << 2)
+                    | ((self.obj_enabled as u8) << 1)
+                    | ((self.bg_win_enabled as u8) << 0)
+            }
+            0x41 => {
+                ((self.lycint as u8) << 6)
+                    | ((self.mode2int as u8) << 5)
+                    | ((self.mode1int as u8) << 4)
+                    | ((self.mode0int as u8) << 3)
+                    | (((self.lyc == self.ly) as u8) << 2)
+                    | ((self.mode as u8) << 0)
+            }
+            0x42 => self.scy,
+            0x43 => self.scx,
+            0x44 => self.ly,
+            0x45 => self.lyc,
+            // 0x46 write only
+            0x47 => self.bgp,
+            0x48 => self.obp0,
+            0x49 => self.obp1,
+            0x4a => self.wy,
+            0x4b => self.wx,
+            _ => 0xff,
+        }
+    }
+
+    pub fn wb(&mut self, addr: u16, val: u8) {
+        match addr & 0xff {
+            0x40 => {
+                self.lcd_enabled = (val >> 7) & 1 != 0;
+                self.win_map = (val >> 6) & 1 != 0;
+                self.win_enabled = (val >> 5) & 1 != 0;
+                self.tile_dat = (val >> 4) & 1 != 0;
+                self.bg_map = (val >> 3) & 1 != 0;
+                self.obj_size = (val >> 2) & 1 != 0;
+                self.obj_enabled = (val >> 1) & 1 != 0;
+                self.bg_win_enabled = (val >> 0) & 1 != 0;
+            }
+            0x41 => {
+                self.lycint = (val >> 6) & 1 != 0;
+                self.mode2int = (val >> 5) & 1 != 0;
+                self.mode1int = (val >> 4) & 1 != 0;
+                self.mode0int = (val >> 3) & 1 != 0;
+                // Rest are read only
+            }
+            0x42 => self.scy = val,
+            0x43 => self.scx = val,
+            // 0x44 Read only
+            0x45 => self.lyc = val,
+            // 0x46 TODO: oam/dma transfer
+            0x47 => {
+                self.bgp = val;
+                update_palette(&mut self.pal.bgp, val);
+            }
+            0x48 => {
+                self.obp0 = val;
+                update_palette(&mut self.pal.sp0, val);
+            }
+            0x49 => {
+                self.obp1 = val;
+                update_palette(&mut self.pal.sp1, val);
+            }
+            0x4a => self.wy = val,
+            0x4b => self.wx = val,
+            _ => {}
+        }
+    }
+}
+
+fn update_palette(pal: &mut [Color; 4], val: u8) {
+    pal[0] = PALETTE[((val >> 0) & 0x3) as usize];
+    pal[1] = PALETTE[((val >> 2) & 0x3) as usize];
+    pal[2] = PALETTE[((val >> 4) & 0x3) as usize];
+    pal[3] = PALETTE[((val >> 6) & 0x3) as usize];
 }

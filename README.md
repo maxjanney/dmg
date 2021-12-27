@@ -1,1 +1,2 @@
-# rust-boy
+# DMG
+DMG emulator written in rust
