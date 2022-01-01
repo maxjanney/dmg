@@ -1,4 +1,8 @@
-use crate::{input::Input, ppu::{Ppu, self}, timer::Timer};
+use crate::{
+    input::Input,
+    ppu::{self, Ppu},
+    timer::Timer,
+};
 
 const WRAM: usize = 0x2000;
 const HRAM: usize = 0x7f;
@@ -113,7 +117,7 @@ impl Memory {
                 self.rom[((addr as u32) - 0x4000 + offset) as usize]
             }
             // 8000 - 9FFF VRAM
-            0x8000..=0x9fff => self.ppu.vram[(addr & 0x7fff) as usize],
+            0x8000..=0x9fff => self.ppu.vram[(addr & 0x1fff) as usize],
             // A000-BFFF - RAM Bank 00-03, if any (Read/Write)
             0xa000..=0xbfff => {
                 if !self.ram_enabled {
@@ -234,6 +238,14 @@ impl Memory {
                 Mbc::Mbc3 => todo!("Rtc latch"),
                 _ => {}
             },
+            // 8000-9FFF - 8 KiB Video ram
+            0x8000..=0x9fff => {
+                self.ppu.vram[(addr & 0x1fff) as usize] = val;
+                // Writing to a tile, so update it
+                if addr < 0x9800 {
+                    self.ppu.update_tile(addr);
+                }
+            }
             // A000-BFFF - RAM Bank 00-03, if any (Read/Write)
             0xa000..=0xbfff => {
                 if self.ram_enabled {

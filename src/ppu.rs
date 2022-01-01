@@ -1,15 +1,20 @@
 const VRAM_SIZE: usize = 0x2000;
 pub const OAM_SIZE: usize = 0xa0;
 
+pub const WIDTH: usize = 160;
+pub const HEIGHT: usize = 140;
+
+const NUM_TILES: usize = 384;
+
 type Color = [u8; 4];
 
 const PALETTE: [Color; 4] = [
     // White
     [255, 255, 255, 255],
     // Light gray
-    [211, 211, 211, 255],
+    [192, 192, 192, 255],
     // Dark gray
-    [169, 169, 169, 255],
+    [96, 96, 96, 255],
     // Black
     [0, 0, 0, 255],
 ];
@@ -23,6 +28,13 @@ struct Palette {
     sp1: [Color; 4],
 }
 
+type Tile = [[u8; 8]; 8];
+
+struct Tiles {
+    // Tile data
+    data: [Tile; NUM_TILES],
+}
+
 #[derive(Copy, Clone, Debug)]
 enum Mode {
     HBlank,
@@ -34,6 +46,8 @@ enum Mode {
 pub struct Ppu {
     pub vram: [u8; VRAM_SIZE],
     pub oam: [u8; OAM_SIZE],
+    pub buf: [u8; 4 * WIDTH * HEIGHT],
+    ticks: u32,
     pal: Palette,
     // LCD Control at 0xff40
     // LCD and PPU enable
@@ -92,6 +106,8 @@ impl Ppu {
         Self {
             vram: [0u8; VRAM_SIZE],
             oam: [0u8; OAM_SIZE],
+            buf: [255; 4 * WIDTH * HEIGHT],
+            ticks: 0,
             pal: Palette {
                 bgp: [[0; 4]; 4],
                 sp0: [[0; 4]; 4],
@@ -120,6 +136,10 @@ impl Ppu {
             obp0: 0,
             obp1: 0,
         }
+    }
+
+    pub fn step(&mut self, ticks: u32) {
+        self.ticks = self.ticks.wrapping_add(ticks);
     }
 
     pub fn rb(&self, addr: u16) -> u8 {
@@ -197,6 +217,9 @@ impl Ppu {
             _ => {}
         }
     }
+
+    // TODO: Update the given tile
+    pub fn update_tile(&mut self, addr: u16) {}
 }
 
 fn update_palette(pal: &mut [Color; 4], val: u8) {
