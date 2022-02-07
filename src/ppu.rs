@@ -1,3 +1,5 @@
+use bitflags::bitflags;
+
 const VRAM_SIZE: usize = 0x2000;
 pub const OAM_SIZE: usize = 0xa0;
 
@@ -43,44 +45,52 @@ enum Mode {
     Transferring,
 }
 
+bitflags! {
+    struct Lcdc: u8 {
+        // LCD and PPU enable
+        const LE = 1 << 7;
+        // Window tile map area
+        const WA = 1 << 6;
+        // Window enable
+        const WE = 1 << 5;
+        // BG and Window tile data area
+        const BWA = 1 << 4;
+        // BG tile map area
+        const BA = 1 << 3;
+        // OBJ Size
+        const OS = 1 << 2;
+        // OBJ Enagle
+        const OE = 1 << 1;
+        // BG and Window enable/priority
+        const BWE = 1 << 0;
+    }
+}
+
+bitflags! {
+    struct Lcds: u8 {
+        // LYC=LY STAT Interrupt source
+        const LY = 1 << 6;
+        // Mode 2 OAM STAT Interrupt source
+        const M2 = 1 << 5;
+        // // Mode 1 VBlank STAT Interrupt source
+        const M1 = 1 << 4;
+        // Mode 0 HBlank STAT Interrupt source
+        const M0 = 1 << 3;
+    }
+}
+
 pub struct Ppu {
     pub vram: [u8; VRAM_SIZE],
     pub oam: [u8; OAM_SIZE],
-    pub buf: [u8; 4 * WIDTH * HEIGHT],
+    buf: [u8; 4 * WIDTH * HEIGHT],
     ticks: u32,
     pal: Palette,
-    // LCD Control at 0xff40
-    // LCD and PPU enable
-    lcd_enabled: bool,
-    // Window tile map area
-    // 0=9800-9BFF, 1=9C00-9FFF
-    win_map: bool,
-    // Window enable
-    win_enabled: bool,
-    // BG and Window tile data area
-    // 0=8800-97FF, 1=8000-8FFF
-    tile_dat: bool,
-    // BG tile map are
-    // 0=9800-9BFF, 1=9C00-9FFF
-    bg_map: bool,
-    // OBJ size
-    // 0=8x8, 1=8x16
-    obj_size: bool,
-    // OBJ enable
-    obj_enabled: bool,
-    // BG and Window enable/priority
-    bg_win_enabled: bool,
-    // LCD Status register at 0xff41
+    // LCD Control register at 0xff40
+    lcdc: Lcdc,
     // Mode flag
     mode: Mode,
-    // Mode 0 HBlank STAT Interrupt source
-    mode0int: bool,
-    // Mode 1 VBlank STAT Interrupt source
-    mode1int: bool,
-    // Mode 2 OAM STAT Interrupt source
-    mode2int: bool,
-    // LYC=LY STAT Interrupt source
-    lycint: bool,
+    // LCD Status register at 0xff41
+    lcds: Lcds,
     // FF42 - SCY (Scroll Y) (R/W)
     scy: u8,
     // FF43 - SCX (Scroll X) (R/W)
@@ -113,19 +123,9 @@ impl Ppu {
                 sp0: [[0; 4]; 4],
                 sp1: [[0; 4]; 4],
             },
-            lcd_enabled: false,
-            win_map: false,
-            win_enabled: false,
-            tile_dat: false,
-            bg_map: false,
-            obj_size: false,
-            obj_enabled: false,
-            bg_win_enabled: false,
+            lcdc: Lcdc::empty(),
             mode: Mode::VBlank,
-            mode0int: false,
-            mode1int: false,
-            mode2int: false,
-            lycint: false,
+            lcds: Lcds::empty(),
             scy: 0,
             scx: 0,
             ly: 0,
@@ -144,23 +144,9 @@ impl Ppu {
 
     pub fn rb(&self, addr: u16) -> u8 {
         match addr & 0xff {
-            0x40 => {
-                ((self.lcd_enabled as u8) << 7)
-                    | ((self.win_map as u8) << 6)
-                    | ((self.win_enabled as u8) << 5)
-                    | ((self.tile_dat as u8) << 4)
-                    | ((self.bg_map as u8) << 3)
-                    | ((self.obj_size as u8) << 2)
-                    | ((self.obj_enabled as u8) << 1)
-                    | ((self.bg_win_enabled as u8) << 0)
-            }
+            0x40 => self.lcdc.bits(),
             0x41 => {
-                ((self.lycint as u8) << 6)
-                    | ((self.mode2int as u8) << 5)
-                    | ((self.mode1int as u8) << 4)
-                    | ((self.mode0int as u8) << 3)
-                    | (((self.lyc == self.ly) as u8) << 2)
-                    | ((self.mode as u8) << 0)
+                self.lcds.bits() | (((self.lyc == self.ly) as u8) << 2) | ((self.mode as u8) << 0)
             }
             0x42 => self.scy,
             0x43 => self.scx,
@@ -178,23 +164,8 @@ impl Ppu {
 
     pub fn wb(&mut self, addr: u16, val: u8) {
         match addr & 0xff {
-            0x40 => {
-                self.lcd_enabled = (val >> 7) & 1 != 0;
-                self.win_map = (val >> 6) & 1 != 0;
-                self.win_enabled = (val >> 5) & 1 != 0;
-                self.tile_dat = (val >> 4) & 1 != 0;
-                self.bg_map = (val >> 3) & 1 != 0;
-                self.obj_size = (val >> 2) & 1 != 0;
-                self.obj_enabled = (val >> 1) & 1 != 0;
-                self.bg_win_enabled = (val >> 0) & 1 != 0;
-            }
-            0x41 => {
-                self.lycint = (val >> 6) & 1 != 0;
-                self.mode2int = (val >> 5) & 1 != 0;
-                self.mode1int = (val >> 4) & 1 != 0;
-                self.mode0int = (val >> 3) & 1 != 0;
-                // Rest are read only
-            }
+            0x40 => self.lcdc = Lcdc::from_bits_truncate(val),
+            0x41 => self.lcds = Lcds::from_bits_truncate(val),
             0x42 => self.scy = val,
             0x43 => self.scx = val,
             // 0x44 Read only
