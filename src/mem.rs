@@ -243,7 +243,7 @@ impl Memory {
                 self.ppu.vram[(addr & 0x1fff) as usize] = val;
                 // Writing to a tile, so update it
                 if addr < 0x9800 {
-                    self.ppu.update_tile(addr);
+                    self.ppu.update_tile((addr & 0x1fff) / 16);
                 }
             }
             // A000-BFFF - RAM Bank 00-03, if any (Read/Write)

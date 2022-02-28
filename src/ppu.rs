@@ -8,18 +8,27 @@ pub const HEIGHT: usize = 140;
 
 const NUM_TILES: usize = 384;
 
-type Color = [u8; 4];
+type Color = (u8, u8, u8);
+type Tile = [[u8; 8]; 8];
 
 const PALETTE: [Color; 4] = [
     // White
-    [255, 255, 255, 255],
+    (255, 255, 255),
     // Light gray
-    [192, 192, 192, 255],
+    (192, 192, 192),
     // Dark gray
-    [96, 96, 96, 255],
+    (96, 96, 96),
     // Black
-    [0, 0, 0, 255],
+    (0, 0, 0),
 ];
+
+#[derive(Copy, Clone, Debug)]
+enum Mode {
+    HBlank,
+    VBlank,
+    Searching,
+    Transferring,
+}
 
 struct Palette {
     // Background and window tiles
@@ -30,19 +39,10 @@ struct Palette {
     sp1: [Color; 4],
 }
 
-type Tile = [[u8; 8]; 8];
-
 struct Tiles {
-    // Tile data
     data: [Tile; NUM_TILES],
-}
-
-#[derive(Copy, Clone, Debug)]
-enum Mode {
-    HBlank,
-    VBlank,
-    Searching,
-    Transferring,
+    to_update: [bool; NUM_TILES],
+    needs_update: bool,
 }
 
 bitflags! {
@@ -82,8 +82,12 @@ bitflags! {
 pub struct Ppu {
     pub vram: [u8; VRAM_SIZE],
     pub oam: [u8; OAM_SIZE],
-    buf: [u8; 4 * WIDTH * HEIGHT],
+    pub buf: [u8; 4 * WIDTH * HEIGHT],
+    // Ticks
     ticks: u32,
+    // Cached tiles
+    tiles: Tiles,
+    // Palettes
     pal: Palette,
     // LCD Control register at 0xff40
     lcdc: Lcdc,
@@ -118,10 +122,15 @@ impl Ppu {
             oam: [0u8; OAM_SIZE],
             buf: [255; 4 * WIDTH * HEIGHT],
             ticks: 0,
+            tiles: Tiles {
+                data: [[[0; 8]; 8]; NUM_TILES],
+                to_update: [false; NUM_TILES],
+                needs_update: false,
+            },
             pal: Palette {
-                bgp: [[0; 4]; 4],
-                sp0: [[0; 4]; 4],
-                sp1: [[0; 4]; 4],
+                bgp: [(0, 0, 0); 4],
+                sp0: [(0, 0, 0); 4],
+                sp1: [(0, 0, 0); 4],
             },
             lcdc: Lcdc::empty(),
             mode: Mode::VBlank,
@@ -136,10 +145,6 @@ impl Ppu {
             obp0: 0,
             obp1: 0,
         }
-    }
-
-    pub fn step(&mut self, ticks: u32) {
-        self.ticks = self.ticks.wrapping_add(ticks);
     }
 
     pub fn rb(&self, addr: u16) -> u8 {
@@ -189,8 +194,31 @@ impl Ppu {
         }
     }
 
-    // TODO: Update the given tile
-    pub fn update_tile(&mut self, addr: u16) {}
+    // Update the given tile
+    pub fn update_tile(&mut self, addr: u16) {
+        let tile = (addr & 0x1fff) / 16;
+        self.tiles.to_update[tile as usize] = true;
+        self.tiles.needs_update = true;
+    }
+
+    // Update the tileset
+    fn update_tileset(&mut self) {
+        self.tiles.needs_update = false;
+        let iter = self.tiles.to_update.iter_mut();
+        for (tile, b) in iter.enumerate().filter(|&(_, &mut i)| i) {
+            *b = false;
+            for i in 0..8 {
+                let addr = 16 * tile + 2 * i;
+                let (mut lo, mut hi) = (self.vram[addr], self.vram[addr + 1]);
+                for j in (0..8).rev() {
+                    let v = ((hi & 1) << 1) | (lo & 1);
+                    self.tiles.data[tile][i][j] = v;
+                    lo >>= 1;
+                    hi >>= 1;
+                }
+            }
+        }
+    }
 }
 
 fn update_palette(pal: &mut [Color; 4], val: u8) {
